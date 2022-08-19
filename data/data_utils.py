@@ -16,9 +16,32 @@ import numpy as np
 import torch
 from torchvision import datasets, transforms
 from tqdm import tqdm
+from torch.utils.data import Dataset
 
 from sklearn.model_selection import train_test_split
 import pickle
+
+
+class custom_concat(Dataset):
+    r"""
+    Subset of a dataset at specified indices.
+
+    Arguments:
+        dataset (Dataset): The whole Dataset
+        indices (sequence): Indices in the whole set selected for subset
+        labels(sequence) : targets as required for the indices. will be the same length as indices
+    """
+    def __init__(self, data1, data2):
+        self.dataset = np.concatenate((data1.data.reshape(-1,3,32,32),data2.data.reshape(-1,3,32,32)), axis=0)
+        self.targets = np.concatenate((data1.targets,data2.targets), axis=0)
+
+    def __getitem__(self, idx):
+        image = self.dataset[idx]
+        target = self.targets[idx]
+        return (image, target)
+
+    def __len__(self):
+        return len(self.targets)
 
 
 class XYDataset(torch.utils.data.Dataset):
@@ -578,10 +601,11 @@ def get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shif
 
 	train_idx = []
 	test_idx= []
-	for cls in np.arange(start_class, end_class):
+	for cls in range(end_class-start_class):
 		indx = np.roll(idx[cls],(shift-1)*100)
-		train_idx.extend(indx[cls][slot*50+(slot+1)*50])
-		test_idx.extend(indx[500:600])
+		#print(indx[0][slot*50:(slot+1)*50], slot)
+		train_idx.extend(list(indx[slot*50:(slot+1)*50]))
+		test_idx.extend(list(indx[500:600]))
 
 	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
 	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
@@ -618,7 +642,7 @@ def get_split_cifar100_tasks(num_tasks, batch_size, slot, shift, get_val=False):
 	cifar_transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), ])
 	cifar_train = torchvision.datasets.CIFAR100('./data/', train=True, download=True, transform=cifar_transforms)
 	cifar_test = torchvision.datasets.CIFAR100('./data/', train=False, download=True, transform=cifar_transforms)
-	combined_cifar = torch.utils.data.ConcatDataset([cifar_train, cifar_test])
+	combined_cifar = custom_concat(cifar_train, cifar_test)
 	classes = int(100 / num_tasks)
 
 	for task_id in range(1, num_tasks + 1):

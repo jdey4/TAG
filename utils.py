@@ -46,6 +46,8 @@ def parse_arguments():
 	parser.add_argument('--mem-size', default=1, type=int, help='mem')
 	parser.add_argument('--multi', default=0, type=int, help='MTL')
 	parser.add_argument('--lambd', default=1, type=int, help='EWC')
+	parser.add_argument('--slot', default=0, type=int, help='slot')
+	parser.add_argument('--shift', default=1, type=int, help='shift')
 
 	args = parser.parse_args()
 	print("Parameters:\n  benchmark="+str(args.dataset)+"\n  num_tasks="+str(args.tasks)+"\n  "+
