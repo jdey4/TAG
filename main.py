@@ -206,7 +206,7 @@ def continuum_run(args, train_loaders, test_loaders):
 		print("TASK {} / {}".format(current_task_id, args.tasks), '\tAvg Acc:', avg_acc)
 
 		torch.cuda.empty_cache()
-
+	#print(acc_db, 'hi')
 	if args.multi != 1:
 		score, forget, learn_acc = end_experiment(args, acc_db, loss_db)
 	else:

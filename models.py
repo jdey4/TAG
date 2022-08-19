@@ -6,6 +6,76 @@ from torch.nn import functional as F
 import torchvision.models as models
 
 
+def conv3x3(in_planes, out_planes, stride=1):
+	return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
+
+class gido(nn.Module):
+	def __init__(self, config):
+		super(MLP, self).__init__()
+		self.n_classes = config['classes']
+		self.total_classes = config['total_classes']
+		self.layer1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
+		self.bn1 = nn.BatchNorm2d(16)
+		self.relu1 = nn.ReLU(inplace=True)
+		self.layer2 = nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1, bias=False)
+		self.bn2 = nn.BatchNorm2d(32)
+		self.relu2 = nn.ReLU(inplace=True)
+		self.layer3 = nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1, bias=False)
+		self.bn3 = nn.BatchNorm2d(64)
+		self.relu3 = nn.ReLU(inplace=True)
+		self.layer4 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1, bias=False)
+		self.bn4 = nn.BatchNorm2d(128)
+		self.relu4 = nn.ReLU(inplace=True)
+		self.layer5 = nn.Conv2d(128, 254, kernel_size=3, stride=2, padding=1, bias=False)
+		self.bn5 = nn.BatchNorm2d(254)
+		self.relu5 = nn.ReLU(inplace=True)
+		self.fc1 = nn.Linear(in_features=2000, out_features=2000)
+		self.bn_fc1 = nn.BatchNorm1d(2000)
+		self.fc2 = nn.Linear(in_features=2000, out_features=2000)
+		self.bn_fc2 = nn.BatchNorm1d(2000)
+		self.relu_fc2 = nn.ReLU(inplace=True)
+		self.fc3 = nn.Linear(in_features=2000, out_features=self.total_classes)
+
+		self.softmax = nn.Softmax(inplace=True)
+
+	def forward(self, x, task_id=None):
+		out = self.layer1(x)
+		out = self.bn1(out)
+		out = self.relu1(out)
+		out = self.layer2(out)
+		out = self.bn2(out)
+		out = self.relu2(out)
+		out = self.layer3(out)
+		out = self.bn3(out)
+		out = self.relu3(out)
+		out = self.layer4(out)
+		out = self.bn4(out)
+		out = self.relu4(out)
+		out = self.layer5(out)
+		out = self.bn5(out)
+		out = self.relu5(out)
+		out = nn.Flatten(out, 1)
+		out = self.fc1(out)
+		out = self.bn_fc1(out)
+		out = self.relu_fc1(out)
+		out = self.fc2(out)
+		out = self.bn_fc2(out)
+		out = self.relu_fc2(out)
+		out = self.fc3(out)
+
+		if task_id is None:
+			return out
+		offset1 = int((task_id - 1) * self.n_classes)
+		offset2 = int(task_id * self.n_classes)
+		if offset1 > 0:
+			out[:, :offset1].data.fill_(0)
+		if offset2 < self.total_classes:
+			out[:, offset2:self.total_classes].data.fill_(0)
+
+		out = self.softmax(out)
+		return out
+
+
 class ResNet18_CUB(nn.Module):
 	"""
 	Resnet18 (pretrained on Imagenet) for CUB benchmark
@@ -70,10 +140,6 @@ class MLP(nn.Module):
 		if offset2 < self.total_classes:
 			out[:, offset2:self.total_classes].data.fill_(-10e10)
 		return out
-
-
-def conv3x3(in_planes, out_planes, stride=1):
-	return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
 class BasicBlock(nn.Module):

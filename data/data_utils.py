@@ -558,7 +558,52 @@ def get_split_cifar100(task_id, classes, batch_size, cifar_train, cifar_test, ge
 	return train_loader, test_loader, val_loader
 
 
-def get_split_cifar100_tasks(num_tasks, batch_size, get_val=False):
+#JD's change
+def get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shift, get_val=False):
+	"""
+    Returns a single task of Split-CIFAR100 dataset
+    :param task_id: Current task id
+    :param classes: Number of classes per task
+    :param batch_size: Batch size
+    :param cifar_train: CIFAR100 training data
+    :param cifar_test: CIFAR100 test data
+    :param get_val: Get validation set for grid search
+    :return: Train, test and validation data loaders
+    """
+	start_class = (task_id - 1) * classes
+	end_class = task_id * classes
+
+	combined_targets = torch.tensor(combined_cifar.targets)
+	idx = [np.where(combined_targets == u)[0] for u in np.arange(start_class, end_class)]
+
+	train_idx = []
+	test_idx= []
+	for cls in np.arange(start_class, end_class):
+		indx = np.roll(idx[cls],(shift-1)*100)
+		train_idx.extend(indx[cls][slot*50+(slot+1)*50])
+		test_idx.extend(indx[500:600])
+
+	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
+	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
+	test_loader = torch.utils.data.DataLoader(
+		torch.utils.data.dataset.Subset(combined_cifar, test_idx), batch_size=256)
+	if get_val:
+		dataset_size = len(train_loader.dataset)
+		indices = list(range(dataset_size))
+		split = int(np.floor(0.1 * dataset_size))
+		np.random.shuffle(indices)
+		train_indices, val_indices = indices[split:], indices[:split]
+		train_dataset = torch.utils.data.Subset(train_data, train_indices)
+		val_dataset = torch.utils.data.Subset(train_data, val_indices)
+		train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
+		val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=256)
+	else:
+		val_loader = None
+	return train_loader, test_loader, val_loader
+
+
+
+def get_split_cifar100_tasks(num_tasks, batch_size, slot, shift, get_val=False):
 	"""
     Returns data loaders for all tasks of Split-CIFAR100
     :param num_tasks: Total number of tasks
@@ -573,10 +618,10 @@ def get_split_cifar100_tasks(num_tasks, batch_size, get_val=False):
 	cifar_transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), ])
 	cifar_train = torchvision.datasets.CIFAR100('./data/', train=True, download=True, transform=cifar_transforms)
 	cifar_test = torchvision.datasets.CIFAR100('./data/', train=False, download=True, transform=cifar_transforms)
+	combined_cifar = torch.utils.data.ConcatDataset([cifar_train, cifar_test])
 	classes = int(100 / num_tasks)
 
 	for task_id in range(1, num_tasks + 1):
-		train_loader, test_loader, val_loader = get_split_cifar100(task_id, classes, batch_size, cifar_train,
-		                                                           cifar_test, get_val=get_val)
+		train_loader, test_loader, val_loader = get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shift, get_val=get_val)
 		datasets[task_id] = {'train': train_loader, 'test': test_loader, 'val': val_loader}
 	return datasets
