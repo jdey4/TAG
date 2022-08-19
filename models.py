@@ -55,8 +55,6 @@ class gido(nn.Module):
 		out = self.layer5(out)
 		out = self.bn5(out)
 		out = self.relu5(out)
-		#print(out.shape)
-		#out = nn.Flatten(out, 1)
 		out = out.view(-1, 254 * 2 * 2)
 		out = self.fc1(out)
 		out = self.bn_fc1(out)
@@ -71,9 +69,9 @@ class gido(nn.Module):
 		offset1 = int((task_id - 1) * self.n_classes)
 		offset2 = int(task_id * self.n_classes)
 		if offset1 > 0:
-			out[:, :offset1].data.fill_(0)
+			out[:, :offset1].data.fill_(-10e10)
 		if offset2 < self.total_classes:
-			out[:, offset2:self.total_classes].data.fill_(0)
+			out[:, offset2:self.total_classes].data.fill_(-10e10)
 
 		out = self.softmax(out)
 		return out
@@ -280,7 +278,7 @@ class AlexNet(torch.nn.Module):
 		return int(np.floor((Lin + 2 * padding - dilation * (kernel_size - 1) - 1) / float(stride) + 1))
 
 	def forward(self, x, task_id):
-		h = self.maxpool(self.drop1(self.relu((self.conv1(x)))))
+		h = self.maxpool(self.drop1(self.relu((self.conv1(x.float())))))
 		h = self.maxpool(self.drop1(self.relu((self.conv2(h)))))
 		h = self.maxpool(self.drop2(self.relu((self.conv3(h)))))
 		h = h.view(x.size(0), -1)

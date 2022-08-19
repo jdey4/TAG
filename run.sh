@@ -1,0 +1,1 @@
+python3 -m main --dataset cifar100 --tasks 10 --epochs-per-task 20 --lr .0003 --gamma 1.0 --batch-size 32 --dropout 0.0 --runs 1 --opt 'adam'

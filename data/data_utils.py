@@ -595,19 +595,24 @@ def get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shif
     """
 	start_class = (task_id - 1) * classes
 	end_class = task_id * classes
-
+	print(start_class, end_class)
 	combined_targets = torch.tensor(combined_cifar.targets)
-	idx = [np.where(combined_targets == u)[0] for u in np.arange(start_class, end_class)]
+	idx = [np.where(combined_targets == u)[0] for u in range(start_class, end_class)]
 
 	train_idx = []
 	test_idx= []
 	for cls in range(end_class-start_class):
 		indx = np.roll(idx[cls],(shift-1)*100)
+		#print(combined_targets[indx[0]])
 		#print(indx[0][slot*50:(slot+1)*50], slot)
 		train_idx.extend(list(indx[slot*50:(slot+1)*50]))
 		test_idx.extend(list(indx[500:600]))
-
+	#print(combined_train_idx, len(train_idx))
+	#for id in train_idx:
+	#	print(combined_cifar.targets[id])
+	#print(combined_cifar.targets)
 	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
+	#print(train_data)
 	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 	test_loader = torch.utils.data.DataLoader(
 		torch.utils.data.dataset.Subset(combined_cifar, test_idx), batch_size=256)
