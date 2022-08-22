@@ -4,7 +4,7 @@ from existing_methods.er import *
 from existing_methods.agem import *
 from existing_methods.ewc import *
 import pickle
-import numpy as np
+import tensorflow as tf
 
 def train_single_epoch(args, net, optimizer, loader, criterion, task_id=None, tag=False, ALGO=None, single_task=False):
 	"""
@@ -28,8 +28,8 @@ def train_single_epoch(args, net, optimizer, loader, criterion, task_id=None, ta
 
 		#JD's change to do label shuffle exp
 		if task_id>0:
-			np.random.shuffle(Y)
-		print(Y)
+			tf.random.shuffle(Y)
+		
 		Y = Y.to(DEVICE)
 		if task_id is not None:
 			pred = net(X, task_id+1)

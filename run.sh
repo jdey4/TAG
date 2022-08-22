@@ -210,3 +210,5 @@ python3 -m main --dataset cifar100 --tasks 10 --epochs-per-task 20 --lr 0.03 --g
 python3 -m main --dataset cifar100 --tasks 10 --epochs-per-task 20 --lr 0.03 --gamma 1.0 --batch-size 10 --dropout 0.0 --runs 1 --opt 'er' --mem-size 1 --slot 9 --shift 4
 python3 -m main --dataset cifar100 --tasks 10 --epochs-per-task 20 --lr 0.03 --gamma 1.0 --batch-size 10 --dropout 0.0 --runs 1 --opt 'er' --mem-size 1 --slot 9 --shift 5
 python3 -m main --dataset cifar100 --tasks 10 --epochs-per-task 20 --lr 0.03 --gamma 1.0 --batch-size 10 --dropout 0.0 --runs 1 --opt 'er' --mem-size 1 --slot 9 --shift 6
+
+sudo shutdown now
