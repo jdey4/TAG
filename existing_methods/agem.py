@@ -68,15 +68,21 @@ class AGEM(nn.Module):
 		self.n_mem_per_class = args.mem_size
 		self.nc_per_task = self.net.n_classes
 
-		self.memory_data = torch.FloatTensor(args.tasks, self.nc_per_task, self.n_mem_per_class, *self.input_size).cuda()
-		self.memory_labs = torch.LongTensor(args.tasks, self.nc_per_task, self.n_mem_per_class).cuda()
+		if torch.cuda.is_available():
+			self.memory_data = torch.FloatTensor(args.tasks, self.nc_per_task, self.n_mem_per_class, *self.input_size).cuda()
+			self.memory_labs = torch.LongTensor(args.tasks, self.nc_per_task, self.n_mem_per_class).cuda()
+		else:
+			self.memory_data = torch.FloatTensor(args.tasks, self.nc_per_task, self.n_mem_per_class, *self.input_size)
+			self.memory_labs = torch.LongTensor(args.tasks, self.nc_per_task, self.n_mem_per_class)
 
 
 		self.grad_dims = []
 		for param in self.parameters():
 			self.grad_dims.append(param.data.numel())
 		self.grads = torch.Tensor(sum(self.grad_dims), 2)
-		self.grads = self.grads.cuda()
+
+		if torch.cuda.is_available():
+			self.grads = self.grads.cuda()
 
 		self.observed_tasks = []
 		self.old_task = -1
