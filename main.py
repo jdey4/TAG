@@ -324,7 +324,7 @@ def continuum_run_single_task(args, train_loaders, test_loaders):
 		torch.cuda.empty_cache()
 		print(acc, 'hi')
 
-	with open('results/tag_single_task_'+str(args.shift)+'_'+str(args.slot)+'.pickle','wb') as f:
+	with open('results/'+args.opt+'_single_task_'+str(args.shift)+'_'+str(args.slot)+'.pickle','wb') as f:
 		pickle.dump(acc, f)
 
 	if args.multi != 1:
