@@ -102,11 +102,12 @@ def avg_runs_exp(runs, validate=False):
 	"""
 	all_scores = []
 	r = 0
+	print("run 500 ",args.run_500)
 	while r<runs:
 		args.seed += 1
-		if args.single_task:
+		if args.single_task == 1:
 			score, forget, learn_acc = continuum_run_single_task(args, train_loaders, val_loaders if validate else test_loaders)
-		elif args.run_500:
+		elif args.run_500 == 1:
 			score, forget, learn_acc = continuum_run_500(args, train_loaders, val_loaders if validate else test_loaders)
 		else:
 			score, forget, learn_acc = continuum_run(args, train_loaders, val_loaders if validate else test_loaders)
