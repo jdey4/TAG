@@ -29,7 +29,7 @@ def train_single_epoch(args, net, optimizer, loader, criterion, task_id=None, ta
 		#JD's change to do label shuffle exp
 		if task_id>0:
 			np.random.shuffle(Y)
-
+		print(Y)
 		Y = Y.to(DEVICE)
 		if task_id is not None:
 			pred = net(X, task_id+1)
