@@ -104,8 +104,13 @@ def avg_runs_exp(runs, validate=False):
 	r = 0
 	while r<runs:
 		args.seed += 1
-		#score, forget, learn_acc = continuum_run_single_task(args, train_loaders, val_loaders if validate else test_loaders)
-		score, forget, learn_acc = continuum_run(args, train_loaders, val_loaders if validate else test_loaders)
+		if args.single_task:
+			score, forget, learn_acc = continuum_run_single_task(args, train_loaders, val_loaders if validate else test_loaders)
+		elif args.run_500:
+			score, forget, learn_acc = continuum_run_500(args, train_loaders, val_loaders if validate else test_loaders)
+		else:
+			score, forget, learn_acc = continuum_run(args, train_loaders, val_loaders if validate else test_loaders)
+
 		all_scores += [[score, forget, learn_acc]]
 		r+=1
 	all_scores = np.array(all_scores)
@@ -224,6 +229,115 @@ def continuum_run(args, train_loaders, test_loaders):
 	return score, forget, learn_acc
 
 #####JD's change#####
+
+def continuum_run_500(args, train_loaders, test_loaders):
+	"""
+	Single run for the given dataset
+	"""
+	ALGO = None
+
+	acc_db, loss_db = init_experiment(args)
+	model = get_benchmark_model(args)
+
+	criterion = nn.CrossEntropyLoss().to(DEVICE)
+	time = 0
+	tag = 'tag' in args.opt
+	optimizer = None
+
+	# Create object of class
+	if args.opt != '':
+		opt = {'rms': torch.optim.RMSprop, 'adagrad': torch.optim.Adagrad, 'adam': torch.optim.Adam}
+		for i in opt:
+			if i in args.opt:
+				optimizer = opt[i](model.parameters(), lr=args.lr)
+				break
+		if tag:
+			optimizer = TAG(model, args, args.tasks, lr=args.lr, optim=args.tag_opt, b=args.b)
+		if optimizer is None:
+			optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
+		if 'er' in args.opt:
+			ALGO = ER(args)
+		if 'agem' in args.opt:
+			ALGO = AGEM(model, optimizer, criterion, args)
+		if 'ewc' in args.opt:
+			ALGO = EWC(model, criterion)
+
+	continuum = np.tile(np.arange(1, args.tasks + 1), 6) if args.multi == 1 else np.arange(1, args.tasks + 1)
+
+	tasks_done = []
+	print(continuum)
+
+	for current_task_id in continuum:
+
+		# Naive SGD / Stable SGD
+		lr = max(args.lr * (args.gamma ** current_task_id), 0.00005)
+		if args.opt == '':
+			optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+
+		# Training part
+		best_val_loss, overfit = np.inf, 0
+		train_loader = train_loaders[current_task_id-1]
+		iterator = tqdm(range(1, args.epochs_per_task+1)) if args.epochs_per_task!=1 else range(1, args.epochs_per_task+1)
+		for epoch in iterator:
+			model, alpha_mean = train_single_epoch(args, model, optimizer, train_loader, criterion, current_task_id-1, tag, ALGO)
+
+			# Early stopping in case of large number of epochs
+			if args.epochs_per_task>20 and test_loaders is not None:
+				val_loader = val_loaders[current_task_id - 1]
+				metrics = eval_single_epoch(model, val_loader, criterion, current_task_id)
+				val_loss = metrics['loss']
+				if val_loss<best_val_loss:
+					best_val_loss = val_loss
+					overfit = 0
+				else:
+					overfit+=1
+					if overfit>=5:
+						break
+
+			# Collect alpha values for analysis
+			alpha_val = [1.0]
+			if tag and args.tag_opt=='rms':
+				mat = np.array([alpha_mean[i] for i in alpha_mean])
+				if current_task_id != 1 and alpha_mean != {}:
+					alpha_val = np.round(mat.mean(axis=0), 3)
+
+		if tag:
+			optimizer.update_all(current_task_id-1)
+		if 'ewc' in args.opt:
+			loader = torch.utils.data.DataLoader(train_loader.dataset, batch_size=200, shuffle=True)
+			ALGO.update(model, current_task_id, loader)
+
+
+		time += 1
+		if current_task_id not in tasks_done:
+			tasks_done += [current_task_id]
+
+		# Evaluation part
+		avg_acc = 0.
+		for prev_task_id in tasks_done:
+			model = model.to(DEVICE)
+			test_loader = test_loaders[prev_task_id - 1]
+			metrics = eval_single_epoch(model, test_loader, criterion, prev_task_id)
+			avg_acc += metrics['accuracy'] / len(tasks_done)
+			if args.multi !=1:
+				acc_db, loss_db = log_metrics(metrics, time, prev_task_id, acc_db, loss_db)
+				if (args.opt == 'tag' and args.tag_opt == 'rms') or args.opt=='rms' and verbose: # verbose
+					print_details(tag, prev_task_id, metrics, alpha_val)
+		print("TASK {} / {}".format(current_task_id, args.tasks), '\tAvg Acc:', avg_acc)
+
+		torch.cuda.empty_cache()
+	#print(acc_db, 'hi')
+
+	with open('results/'+args.opt+'_'+str(args.slot+1)+'_'+str(args.shift)+'.pickle','wb') as f:
+		pickle.dump(acc_db, f)
+
+	if args.multi != 1:
+		score, forget, learn_acc = end_experiment(args, acc_db, loss_db)
+	else:
+		score, forget, learn_acc = avg_acc, 0., 0.
+	return score, forget, learn_acc
+
+
 def continuum_run_single_task(args, train_loaders, test_loaders):
 	"""
 	Single run for the given dataset

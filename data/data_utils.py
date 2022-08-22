@@ -680,7 +680,7 @@ def get_split_cifar100_5000(task_id, classes, batch_size, combined_cifar, shift,
 	return train_loader, test_loader, val_loader
 
 
-def get_split_cifar100_tasks(num_tasks, batch_size, slot, shift, get_val=False):
+def get_split_cifar100_tasks(num_tasks, batch_size, slot, shift, run_500=True, get_val=False):
 	"""
     Returns data loaders for all tasks of Split-CIFAR100
     :param num_tasks: Total number of tasks
@@ -699,8 +699,10 @@ def get_split_cifar100_tasks(num_tasks, batch_size, slot, shift, get_val=False):
 	classes = int(100 / num_tasks)
 
 	for task_id in range(1, num_tasks + 1):
-		#train_loader, test_loader, val_loader = get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shift, get_val=get_val)
-		train_loader, test_loader, val_loader = get_split_cifar100_5000(task_id, classes, batch_size, combined_cifar, shift, get_val=get_val)
+		if run_500:
+			train_loader, test_loader, val_loader = get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shift, get_val=get_val)
+		else:
+			train_loader, test_loader, val_loader = get_split_cifar100_5000(task_id, classes, batch_size, combined_cifar, shift, get_val=get_val)
 
 		datasets[task_id] = {'train': train_loader, 'test': test_loader, 'val': val_loader}
 	return datasets
