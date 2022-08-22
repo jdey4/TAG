@@ -49,6 +49,7 @@ def parse_arguments():
 	parser.add_argument('--slot', default=0, type=int, help='slot')
 	parser.add_argument('--shift', default=1, type=int, help='shift')
 	parser.add_argument('--run_500', default=True, type=int, help='run 500 samples?')
+	parser.add_argument('--single_task', default=False, type=int, help='single task')
 
 	args = parser.parse_args()
 	print("Parameters:\n  benchmark="+str(args.dataset)+"\n  num_tasks="+str(args.tasks)+"\n  "+
