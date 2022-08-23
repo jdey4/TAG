@@ -78,7 +78,7 @@ class custom_rotate(Dataset):
 	def __init__(self, data, angle):
 		self.dataset = data
 		self.angle = angle
-		print(len(self.dataset))
+		print('hi')
 	
 	def __getitem__(self, idx):
 		image = image_aug(self.dataset[idx][0], self.angle)
@@ -737,7 +737,7 @@ def get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shif
 	:param get_val: Get validation set for grid search
 	:return: Train, test and validation data loaders
 	"""
-	print('doing 500')
+	
 	start_class = 0
 	end_class = 10
 	print(start_class, end_class)
@@ -804,6 +804,6 @@ def get_split_cifar100_tasks(num_tasks, batch_size, shift, angle, get_val=False)
 
 	for task_id in range(1, num_tasks + 1):
 		train_loader, test_loader, val_loader = get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shift, angle, get_val=get_val)
-
+		#train_loader, test_loader, val_loader = get_split_cifar100_(task_id, classes, batch_size, combined_cifar, 0, shift, get_val=get_val)
 		datasets[task_id] = {'train': train_loader, 'test': test_loader, 'val': val_loader}
 	return datasets

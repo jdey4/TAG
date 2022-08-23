@@ -105,8 +105,8 @@ def avg_runs_exp(runs, validate=False):
 	#print("run 500 ",args.run_500)
 	while r<runs:
 		args.seed += 1
-		score, forget, learn_acc = continuum_run(args, train_loaders, val_loaders if validate else test_loaders)
-
+		score, forget, learn_acc = continuum_run_500(args, train_loaders, val_loaders if validate else test_loaders)
+		
 		all_scores += [[score, forget, learn_acc]]
 		r+=1
 	all_scores = np.array(all_scores)
@@ -324,7 +324,7 @@ def continuum_run_500(args, train_loaders, test_loaders):
 		torch.cuda.empty_cache()
 	#print(acc_db, 'hi')
 
-	with open('results/'+args.opt+'_'+str(args.slot+1)+'_'+str(args.shift)+'.pickle','wb') as f:
+	with open('results/'+args.opt+'_'+str(args.angle)+'_'+str(args.shift)+'.pickle','wb') as f:
 		pickle.dump(acc_db, f)
 
 	if args.multi != 1:
