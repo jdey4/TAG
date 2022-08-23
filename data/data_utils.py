@@ -78,6 +78,7 @@ class custom_rotate(Dataset):
 	def __init__(self, data, angle):
 		self.dataset = data
 		self.angle = angle
+		print('hi')
 	
 	def __getitem__(self, idx):
 		image = image_aug(self.dataset[idx][0], self.angle)
@@ -749,7 +750,8 @@ def get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shif
 		indx = np.roll(idx[cls],(shift-1)*100)
 		# print(combined_targets[indx[0]])
 		# print(indx[0][slot*50:(slot+1)*50], slot)
-		if task_id == 0:
+		
+		if task_id == 1:
 			train_idx.extend(list(indx[0:250]))
 		else:
 			train_idx.extend(list(indx[250:500]))
@@ -761,9 +763,9 @@ def get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shif
 	# print(combined_cifar.targets)
 	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
 	
-	if task_id==1:
+	if task_id==2:
 		train_data = custom_rotate(train_data, angle)
-	# print(train_data)
+	#print(len(train_data))
 	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 	test_loader = torch.utils.data.DataLoader(
 		torch.utils.data.dataset.Subset(combined_cifar, test_idx), batch_size=256)
