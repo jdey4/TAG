@@ -762,7 +762,7 @@ def get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shif
 	#	print(combined_cifar.targets[id])
 	# print(combined_cifar.targets)
 	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
-	print(train_data[0])
+	#print(train_data[0])
 	if task_id==2:
 		train_data = custom_rotate(train_data, angle)
 	#print(len(train_data))

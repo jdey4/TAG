@@ -145,7 +145,7 @@ def continuum_run(args, train_loaders, test_loaders):
 		if 'ewc' in args.opt:
 			ALGO = EWC(model, criterion)
 
-	continuum = np.tile(np.arange(1, args.tasks + 1), 6) if args.multi == 1 else np.arange(1, args.tasks + 1)
+	continuum = np.tile(np.arange(1, 3), 6) if args.multi == 1 else np.arange(1, 2 + 1)
 
 	tasks_done = []
 	print(continuum)
