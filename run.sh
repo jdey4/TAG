@@ -1,4 +1,4 @@
-#export CUDA_VISIBLE_DEVICES=""
+export CUDA_VISIBLE_DEVICES="1"
 
 for angle in `seq 0 4 182`;
 do
