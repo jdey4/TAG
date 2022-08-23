@@ -28,7 +28,7 @@ def parse_arguments():
 	Parse and print the relevant arguments
 	"""
 	parser = argparse.ArgumentParser(description='Argument parser')
-	parser.add_argument('--tasks', default=5, type=int, help='total number of tasks')
+	parser.add_argument('--tasks', default=2, type=int, help='total number of tasks')
 	parser.add_argument('--epochs-per-task', default=1, type=int, help='epochs per task')
 	parser.add_argument('--dataset', default='rot-mnist', type=str, help='dataset. options: rot-mnist, perm-mnist, cifar100')
 	parser.add_argument('--batch-size', default=10, type=int, help='batch-size')
@@ -46,10 +46,9 @@ def parse_arguments():
 	parser.add_argument('--mem-size', default=1, type=int, help='mem')
 	parser.add_argument('--multi', default=0, type=int, help='MTL')
 	parser.add_argument('--lambd', default=1, type=int, help='EWC')
-	parser.add_argument('--slot', default=0, type=int, help='slot')
+	parser.add_argument('--angle', default=0, type=int, help='angle')
 	parser.add_argument('--shift', default=1, type=int, help='shift')
-	parser.add_argument('--run_500', default=1, type=int, help='run 500 samples?')
-	parser.add_argument('--single_task', default=0, type=int, help='single task')
+	
 
 	args = parser.parse_args()
 	print("Parameters:\n  benchmark="+str(args.dataset)+"\n  num_tasks="+str(args.tasks)+"\n  "+
@@ -113,7 +112,7 @@ def get_benchmark_model(args):
 			print("Warning! the main paper MLP with 256 neurons for experiment with 20 tasks")
 		return MLP(args.hiddens, {'dropout': args.dropout, 'total_classes': args.tasks*10, 'classes': 10}).to(DEVICE)
 	elif 'cifar' in args.dataset:
-		if args.tasks==10:
+		if args.tasks==10 or args.tasks==2:
 			#return AlexNet(config={'input_size': (3, 32, 32), 'total_classes': 100, 'classes': int(100 / args.tasks)}).to(DEVICE)
 			return gido(config={'input_size': (3, 32, 32), 'total_classes': 100, 'classes': int(100 / args.tasks)}).to(DEVICE)
 		return ResNet18(config={'input_size': (3, 32, 32), 'dropout': args.dropout, 'classes': int(100 / args.tasks)}).to(DEVICE)

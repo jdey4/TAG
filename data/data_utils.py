@@ -8,6 +8,9 @@ import numpy as np
 import torch
 from torchvision import datasets, transforms
 from tqdm import tqdm
+from skimage.transform import rotate
+from scipy import ndimage
+from skimage.util import img_as_ubyte
 
 from sklearn.model_selection import train_test_split
 import pickle
@@ -23,31 +26,72 @@ import pickle
 
 
 class custom_concat(Dataset):
-    r"""
-    Subset of a dataset at specified indices.
+	r"""
+	Subset of a dataset at specified indices.
 
-    Arguments:
-        dataset (Dataset): The whole Dataset
-        indices (sequence): Indices in the whole set selected for subset
-        labels(sequence) : targets as required for the indices. will be the same length as indices
-    """
-    def __init__(self, data1, data2):
-        self.dataset = np.concatenate((data1.data.reshape(-1,3,32,32),data2.data.reshape(-1,3,32,32)), axis=0)
-        self.targets = np.concatenate((data1.targets,data2.targets), axis=0)
+	Arguments:
+		dataset (Dataset): The whole Dataset
+		indices (sequence): Indices in the whole set selected for subset
+		labels(sequence) : targets as required for the indices. will be the same length as indices
+	"""
 
-    def __getitem__(self, idx):
-        image = self.dataset[idx]
-        target = self.targets[idx]
-        return (image, target)
+	def __init__(self, data1, data2):
+		self.dataset = np.concatenate(
+			(data1.data.reshape(-1, 3, 32, 32), data2.data.reshape(-1, 3, 32, 32)), axis=0)
+		self.targets = np.concatenate((data1.targets, data2.targets), axis=0)
 
-    def __len__(self):
-        return len(self.targets)
+	def __getitem__(self, idx):
+		image = self.dataset[idx]
+		target = self.targets[idx]
+		return (image, target)
+
+	def __len__(self):
+		return len(self.targets)
+
+
+def image_aug(pic, angle, centroid_x=23, centroid_y=23, win=16, scale=1.45):
+	im_sz = int(np.floor(pic.shape[1]*scale))
+	pic_ = np.uint8(np.zeros((im_sz,im_sz,3),dtype=int))
+	
+	pic_[:,:,0] = ndimage.zoom(pic[0,:,:],scale)
+
+	pic_[:,:,1] = ndimage.zoom(pic[1,:,:],scale)
+	pic_[:,:,2] = ndimage.zoom(pic[2,:,:],scale)
+
+	image_aug = rotate(pic_, angle, resize=False)
+	#print(image_aug.shape)
+	image_aug_ = image_aug[centroid_x-win:centroid_x+win,centroid_y-win:centroid_y+win,:].reshape(3,32,32)
+
+	return torch.from_numpy(img_as_ubyte(image_aug_))
+
+
+class custom_rotate(Dataset):
+	r"""
+	Subset of a dataset at specified indices.
+
+	Arguments:
+		dataset (Dataset): The whole Dataset
+		indices (sequence): Indices in the whole set selected for subset
+		labels(sequence) : targets as required for the indices. will be the same length as indices
+	"""
+
+	def __init__(self, data, angle):
+		self.dataset = data
+		self.angle = angle
+	
+	def __getitem__(self, idx):
+		image = image_aug(self.dataset[idx][0], self.angle)
+		target = self.dataset[idx][1] + 10
+		return (image, target)
+
+	def __len__(self):
+		return len(self.dataset)
 
 
 class XYDataset(torch.utils.data.Dataset):
 	"""
-    Image pre-processing
-    """
+	Image pre-processing
+	"""
 
 	def __init__(self, x, y, **kwargs):
 		self.x, self.y = x, y
@@ -81,8 +125,8 @@ class XYDataset(torch.utils.data.Dataset):
 
 class CLDataLoader(object):
 	"""
-    Create data loader for the given task dataset
-    """
+	Create data loader for the given task dataset
+	"""
 
 	def __init__(self, datasets_per_task, args, train=True):
 		bs = args.batch_size if train else 256
@@ -101,14 +145,14 @@ class CLDataLoader(object):
 
 def get_split_cub(args, get_val=False):
 	"""
-    Import CUB dataset and split it into multiple tasks with disjoint set of classes
-    Implementation is based on the one provided by:
-        Aljundi, Rahaf, et al. "Online continual learning with maximally interfered retrieval."
-        arXiv preprint arXiv:1908.04742 (2019).
-    :param args: Arguments for model/data configuration
-    :param get_val: Get validation set for grid search
-    :return: Train, test and validation data loaders
-    """
+	Import CUB dataset and split it into multiple tasks with disjoint set of classes
+	Implementation is based on the one provided by:
+		Aljundi, Rahaf, et al. "Online continual learning with maximally interfered retrieval."
+		arXiv preprint arXiv:1908.04742 (2019).
+	:param args: Arguments for model/data configuration
+	:param get_val: Get validation set for grid search
+	:return: Train, test and validation data loaders
+	"""
 	args.n_classes = 200
 	args.n_classes_per_task = args.n_classes
 	args.use_conv = True
@@ -148,9 +192,9 @@ def get_split_cub(args, get_val=False):
 
 	# all_data, all_label = _CUB_read_img_from_file('data/CUB_200_2011/images', 'data/CUB_200_2011/images.txt', 224, 224)
 	train_img, train_label = _CUB_read_img_from_file('data/CUB_200_2011/images', 'data/CUB_200_2011/CUB_train_list.txt',
-	                                                 224, 224)
+													 224, 224)
 	test_img, test_label = _CUB_read_img_from_file('data/CUB_200_2011/images', 'data/CUB_200_2011/CUB_test_list.txt',
-	                                               224, 224)
+												   224, 224)
 	print(train_img.shape, test_img.shape)
 	train_ds, test_ds = [], []
 	current_train, current_test = None, None
@@ -188,30 +232,30 @@ def get_split_cub(args, get_val=False):
 
 	task_ids = torch.from_numpy(np.stack(task_ids)).to(args.device).long()
 	test_ds = map(lambda x, y: XYDataset(x[0], x[1],
-	                                     **{'source': 'cub', 'mask': y, 'task_ids': task_ids, 'transform': transform}),
-	              test_ds, masks)
+										 **{'source': 'cub', 'mask': y, 'task_ids': task_ids, 'transform': transform}),
+				  test_ds, masks)
 	if get_val:
 		train_ds, val_ds = make_valid_from_train(train_ds)
 		val_ds = map(lambda x, y: XYDataset(x[0], x[1], **{'source': 'cub', 'mask': y, 'task_ids': task_ids,
-		                                                   'transform': transform}), val_ds, masks)
+														   'transform': transform}), val_ds, masks)
 	else:
 		val_ds = test_ds
 	train_ds = map(lambda x, y: XYDataset(x[0], x[1],
-	                                      **{'source': 'cub', 'mask': y, 'task_ids': task_ids, 'transform': transform}),
-	               train_ds, masks)
+										  **{'source': 'cub', 'mask': y, 'task_ids': task_ids, 'transform': transform}),
+				   train_ds, masks)
 	return train_ds, test_ds, val_ds
 
 
 def get_miniimagenet(args, get_val=False):
 	"""
-    Import mini-imagenet dataset and split it into multiple tasks with disjoint set of classes
-    Implementation is based on the one provided by:
-        Aljundi, Rahaf, et al. "Online continual learning with maximally interfered retrieval."
-        arXiv preprint arXiv:1908.04742 (2019).
-    :param args: Arguments for model/data configuration
-    :param get_val: Get validation set for grid search
-    :return: Train, test and validation data loaders
-    """
+	Import mini-imagenet dataset and split it into multiple tasks with disjoint set of classes
+	Implementation is based on the one provided by:
+		Aljundi, Rahaf, et al. "Online continual learning with maximally interfered retrieval."
+		arXiv preprint arXiv:1908.04742 (2019).
+	:param args: Arguments for model/data configuration
+	:param get_val: Get validation set for grid search
+	:return: Train, test and validation data loaders
+	"""
 	args.use_conv = True
 	args.n_classes = 100
 	# if args.multi == 1:
@@ -278,25 +322,25 @@ def get_miniimagenet(args, get_val=False):
 	task_ids = torch.from_numpy(np.stack(task_ids)).to(args.device).long()
 
 	test_ds = map(lambda x, y: XYDataset(x[0], x[1], **{'source': 'mini_imagenet', 'mask': y, 'task_ids': task_ids,
-	                                                    'transform': transform}), test_ds, masks)
+														'transform': transform}), test_ds, masks)
 	if get_val:
 		train_ds, val_ds = make_valid_from_train(train_ds)
 		val_ds = map(lambda x, y: XYDataset(x[0], x[1], **{'source': 'mini_imagenet', 'mask': y, 'task_ids': task_ids,
-		                                                   'transform': transform}), val_ds, masks)
+														   'transform': transform}), val_ds, masks)
 	else:
 		val_ds = test_ds
 	train_ds = map(lambda x, y: XYDataset(x[0], x[1], **{'source': 'mini_imagenet', 'mask': y, 'task_ids': task_ids,
-	                                                     'transform': transform}), train_ds, masks)
+														 'transform': transform}), train_ds, masks)
 
 	return train_ds, test_ds, val_ds
 
 
 def make_valid_from_train(dataset, cut=0.9):
 	"""
-    Split training data to get validation set
-    :param dataset: Training dataset
-    :param cut: Percentage of dataset to be kept for training purpose
-    """
+	Split training data to get validation set
+	:param dataset: Training dataset
+	:param cut: Percentage of dataset to be kept for training purpose
+	"""
 	tr_ds, val_ds = [], []
 	for task_ds in dataset:
 		x_t, y_t = task_ds
@@ -329,8 +373,8 @@ class MyDataloader(torch.utils.data.Dataset):
 
 def get_nomnist(task_id):
 	"""
-    Parses and returns the downloaded notMNIST dataset
-    """
+	Parses and returns the downloaded notMNIST dataset
+	"""
 	classes = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
 	tar_path = "./data/notMNIST_small.tar"
 	tmp_path = "./data/tmp"
@@ -360,13 +404,13 @@ def get_nomnist(task_id):
 
 def get_5_datasets(task_id, DATA, batch_size, get_val=False):
 	"""
-    Returns the data loaders for a single task of 5-dataset
-    :param task_id: Current task id
-    :param DATA: Dataset class from torchvision
-    :param batch_size: Batch size
-    :param get_val: Get validation set for grid search
-    :return: Train, test and validation data loaders
-    """
+	Returns the data loaders for a single task of 5-dataset
+	:param task_id: Current task id
+	:param DATA: Dataset class from torchvision
+	:param batch_size: Batch size
+	:param get_val: Get validation set for grid search
+	:return: Train, test and validation data loaders
+	"""
 	if task_id in [0, 2]:
 		transforms = torchvision.transforms.Compose([
 			torchvision.transforms.ToTensor(),
@@ -384,17 +428,17 @@ def get_5_datasets(task_id, DATA, batch_size, get_val=False):
 	if task_id != 3:
 		try:
 			train_data = DATA('./data/', train=True, download=True, transform=transforms,
-			                  target_transform=target_transform)
+							  target_transform=target_transform)
 			test_data = DATA('./data/', train=False, download=True, transform=transforms,
-			                 target_transform=target_transform)
+							 target_transform=target_transform)
 		except:
 			# Slighly different way to import SVHN
 			train_data = DATA('./data/SVHN/', split='train', download=True, transform=transforms,
-			                  target_transform=target_transform)
+							  target_transform=target_transform)
 			test_data = DATA('./data/SVHN/', split='test', download=True, transform=transforms,
-			                 target_transform=target_transform)
+							 target_transform=target_transform)
 		test_loader = torch.utils.data.DataLoader(test_data, batch_size=256, shuffle=False, num_workers=4,
-		                                          pin_memory=True)
+												  pin_memory=True)
 	else:
 		all_images, all_labels = get_nomnist(task_id)
 		dataset_size = len(all_images)
@@ -405,7 +449,7 @@ def get_5_datasets(task_id, DATA, batch_size, get_val=False):
 		train_data = MyDataloader(all_images[train_indices], all_labels[train_indices])
 		test_data = MyDataloader(all_images[test_indices], all_labels[test_indices])
 		test_loader = torch.utils.data.DataLoader(test_data, batch_size=256, shuffle=False, num_workers=4,
-		                                          pin_memory=True)
+												  pin_memory=True)
 	if get_val:
 		dataset_size = len(train_data)
 		indices = list(range(dataset_size))
@@ -418,24 +462,24 @@ def get_5_datasets(task_id, DATA, batch_size, get_val=False):
 		val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=256)
 	else:
 		train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=4,
-		                                           pin_memory=True)
+												   pin_memory=True)
 		val_loader = None
 	return train_loader, test_loader, val_loader
 
 
 def get_5_datasets_tasks(num_tasks, batch_size, get_val=False):
 	"""
-    Returns data loaders for all tasks of 5-dataset.
-    :param num_tasks: Total number of tasks
-    :param batch_size: Batch-size for training data
-    :param get_val: Get validation set for grid search
-    """
+	Returns data loaders for all tasks of 5-dataset.
+	:param num_tasks: Total number of tasks
+	:param batch_size: Batch-size for training data
+	:param get_val: Get validation set for grid search
+	"""
 	datasets = {}
 	data_list = [torchvision.datasets.CIFAR10,
-	             torchvision.datasets.MNIST,
-	             torchvision.datasets.SVHN,
-	             'notMNIST',
-	             torchvision.datasets.FashionMNIST]
+				 torchvision.datasets.MNIST,
+				 torchvision.datasets.SVHN,
+				 'notMNIST',
+				 torchvision.datasets.FashionMNIST]
 	for task_id, DATA in enumerate(data_list):
 		print('Loading Task/Dataset:', task_id)
 		train_loader, test_loader, val_loader = get_5_datasets(task_id, DATA, batch_size, get_val=get_val)
@@ -445,12 +489,12 @@ def get_5_datasets_tasks(num_tasks, batch_size, get_val=False):
 
 def get_permuted_mnist(task_id, batch_size):
 	"""
-    Get the dataset loaders (train and test) for a `single` task of permuted MNIST.
-    This function will be called several times for each task.
-    :param task_id: Current task id
-    :param batch_size: Batch size
-    :return: Train and test data loaders
-    """
+	Get the dataset loaders (train and test) for a `single` task of permuted MNIST.
+	This function will be called several times for each task.
+	:param task_id: Current task id
+	:param batch_size: Batch size
+	:return: Train and test data loaders
+	"""
 
 	# convention, the first task will be the original MNIST images, and hence no permutation
 	if task_id == 1:
@@ -458,27 +502,27 @@ def get_permuted_mnist(task_id, batch_size):
 	else:
 		idx_permute = torch.from_numpy(np.random.RandomState().permutation(784))
 	transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
-	                                             torchvision.transforms.Lambda(lambda x: x.view(-1)[idx_permute]),
-	                                             ])
+												 torchvision.transforms.Lambda(lambda x: x.view(-1)[idx_permute]),
+												 ])
 	target_transform = torchvision.transforms.Compose([torchvision.transforms.Lambda(lambda y: y + (task_id - 1) * 10)])
 	mnist_train = torchvision.datasets.MNIST('./data/', train=True, download=True, transform=transforms,
-	                                         target_transform=target_transform)
+											 target_transform=target_transform)
 	train_loader = torch.utils.data.DataLoader(mnist_train, batch_size=batch_size, num_workers=4, pin_memory=True,
-	                                           shuffle=True)
+											   shuffle=True)
 	test_loader = torch.utils.data.DataLoader(torchvision.datasets.MNIST('./data/', train=False, download=True,
-	                                                                     transform=transforms,
-	                                                                     target_transform=target_transform),
-	                                          batch_size=256, shuffle=False, num_workers=4, pin_memory=True)
+																		 transform=transforms,
+																		 target_transform=target_transform),
+											  batch_size=256, shuffle=False, num_workers=4, pin_memory=True)
 
 	return train_loader, test_loader
 
 
 def get_permuted_mnist_tasks(num_tasks, batch_size):
 	"""
-    Returns the datasets for sequential tasks of permuted MNIST
-    :param num_tasks: Total number of tasks
-    :param batch_size: Batch-size for training data
-    """
+	Returns the datasets for sequential tasks of permuted MNIST
+	:param num_tasks: Total number of tasks
+	:param batch_size: Batch-size for training data
+	"""
 	datasets = {}
 	for task_id in range(1, num_tasks + 1):
 		train_loader, test_loader = get_permuted_mnist(task_id, batch_size)
@@ -488,8 +532,8 @@ def get_permuted_mnist_tasks(num_tasks, batch_size):
 
 class RotationTransform:
 	"""
-    Rotation transforms for the images in `Rotation MNIST` dataset.
-    """
+	Rotation transforms for the images in `Rotation MNIST` dataset.
+	"""
 
 	def __init__(self, angle):
 		self.angle = angle
@@ -500,12 +544,12 @@ class RotationTransform:
 
 def get_rotated_mnist(task_id, batch_size, per_task_rotation=10):
 	"""
-    Returns the dataset for a single task of Rotation MNIST dataset
-    :param task_id: Current task id
-    :param batch_size: Batch size
-    :param per_task_rotation: Rotation different between each task
-    :return: Train and test data loaders
-    """
+	Returns the dataset for a single task of Rotation MNIST dataset
+	:param task_id: Current task id
+	:param batch_size: Batch size
+	:param per_task_rotation: Rotation different between each task
+	:return: Train and test data loaders
+	"""
 	rotation_degree = (task_id - 1) * per_task_rotation
 	rotation_degree -= (np.random.random() * per_task_rotation)
 
@@ -516,23 +560,23 @@ def get_rotated_mnist(task_id, batch_size, per_task_rotation=10):
 	target_transform = torchvision.transforms.Compose([torchvision.transforms.Lambda(lambda y: y + (task_id - 1) * 10)])
 
 	train_loader = torch.utils.data.DataLoader(torchvision.datasets.MNIST('./data/', train=True, download=True,
-	                                                                      transform=transforms,
-	                                                                      target_transform=target_transform),
-	                                           batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+																		  transform=transforms,
+																		  target_transform=target_transform),
+											   batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 	test_loader = torch.utils.data.DataLoader(torchvision.datasets.MNIST('./data/', train=False, download=True,
-	                                                                     transform=transforms,
-	                                                                     target_transform=target_transform),
-	                                          batch_size=256, shuffle=False, num_workers=4, pin_memory=True)
+																		 transform=transforms,
+																		 target_transform=target_transform),
+											  batch_size=256, shuffle=False, num_workers=4, pin_memory=True)
 
 	return train_loader, test_loader
 
 
 def get_rotated_mnist_tasks(num_tasks, batch_size):
 	"""
-    Returns data loaders for all tasks of rotation MNIST dataset.
-    :param num_tasks: Total number of tasks
-    :param batch_size: Batch-size for training data
-    """
+	Returns data loaders for all tasks of rotation MNIST dataset.
+	:param num_tasks: Total number of tasks
+	:param batch_size: Batch-size for training data
+	"""
 	datasets = {}
 	per_task_rotation = {1: 360, 2: 180, 3: 120, 4: 90, 5: 60, 6: 60, 7: 45, 8: 45, 9: 30, 10: 30}[
 		num_tasks] if num_tasks <= 10 else 10
@@ -545,15 +589,15 @@ def get_rotated_mnist_tasks(num_tasks, batch_size):
 
 def get_split_cifar100(task_id, classes, batch_size, cifar_train, cifar_test, get_val=False):
 	"""
-    Returns a single task of Split-CIFAR100 dataset
-    :param task_id: Current task id
-    :param classes: Number of classes per task
-    :param batch_size: Batch size
-    :param cifar_train: CIFAR100 training data
-    :param cifar_test: CIFAR100 test data
-    :param get_val: Get validation set for grid search
-    :return: Train, test and validation data loaders
-    """
+	Returns a single task of Split-CIFAR100 dataset
+	:param task_id: Current task id
+	:param classes: Number of classes per task
+	:param batch_size: Batch size
+	:param cifar_train: CIFAR100 training data
+	:param cifar_test: CIFAR100 test data
+	:param get_val: Get validation set for grid search
+	:return: Train, test and validation data loaders
+	"""
 	start_class = (task_id - 1) * classes
 	end_class = task_id * classes
 
@@ -581,18 +625,18 @@ def get_split_cifar100(task_id, classes, batch_size, cifar_train, cifar_test, ge
 	return train_loader, test_loader, val_loader
 
 
-#JD's change
+# JD's change
 def get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shift, get_val=False):
 	"""
-    Returns a single task of Split-CIFAR100 dataset
-    :param task_id: Current task id
-    :param classes: Number of classes per task
-    :param batch_size: Batch size
-    :param cifar_train: CIFAR100 training data
-    :param cifar_test: CIFAR100 test data
-    :param get_val: Get validation set for grid search
-    :return: Train, test and validation data loaders
-    """
+	Returns a single task of Split-CIFAR100 dataset
+	:param task_id: Current task id
+	:param classes: Number of classes per task
+	:param batch_size: Batch size
+	:param cifar_train: CIFAR100 training data
+	:param cifar_test: CIFAR100 test data
+	:param get_val: Get validation set for grid search
+	:return: Train, test and validation data loaders
+	"""
 	print('doing 500')
 	start_class = (task_id - 1) * classes
 	end_class = task_id * classes
@@ -604,16 +648,16 @@ def get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shif
 	test_idx= []
 	for cls in range(end_class-start_class):
 		indx = np.roll(idx[cls],(shift-1)*100)
-		#print(combined_targets[indx[0]])
-		#print(indx[0][slot*50:(slot+1)*50], slot)
+		# print(combined_targets[indx[0]])
+		# print(indx[0][slot*50:(slot+1)*50], slot)
 		train_idx.extend(list(indx[slot*50:(slot+1)*50]))
 		test_idx.extend(list(indx[500:600]))
-	#print(combined_train_idx, len(train_idx))
-	#for id in train_idx:
+	# print(combined_train_idx, len(train_idx))
+	# for id in train_idx:
 	#	print(combined_cifar.targets[id])
-	#print(combined_cifar.targets)
+	# print(combined_cifar.targets)
 	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
-	#print(train_data)
+	# print(train_data)
 	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 	test_loader = torch.utils.data.DataLoader(
 		torch.utils.data.dataset.Subset(combined_cifar, test_idx), batch_size=256)
@@ -634,15 +678,15 @@ def get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shif
 
 def get_split_cifar100_5000(task_id, classes, batch_size, combined_cifar, shift, get_val=False):
 	"""
-    Returns a single task of Split-CIFAR100 dataset
-    :param task_id: Current task id
-    :param classes: Number of classes per task
-    :param batch_size: Batch size
-    :param cifar_train: CIFAR100 training data
-    :param cifar_test: CIFAR100 test data
-    :param get_val: Get validation set for grid search
-    :return: Train, test and validation data loaders
-    """
+	Returns a single task of Split-CIFAR100 dataset
+	:param task_id: Current task id
+	:param classes: Number of classes per task
+	:param batch_size: Batch size
+	:param cifar_train: CIFAR100 training data
+	:param cifar_test: CIFAR100 test data
+	:param get_val: Get validation set for grid search
+	:return: Train, test and validation data loaders
+	"""
 	print('doing 5000')
 	start_class = (task_id - 1) * classes
 	end_class = task_id * classes
@@ -654,16 +698,72 @@ def get_split_cifar100_5000(task_id, classes, batch_size, combined_cifar, shift,
 	test_idx= []
 	for cls in range(end_class-start_class):
 		indx = np.roll(idx[cls],(shift-1)*100)
-		#print(combined_targets[indx[0]])
-		#print(indx[0][slot*50:(slot+1)*50], slot)
+		# print(combined_targets[indx[0]])
+		# print(indx[0][slot*50:(slot+1)*50], slot)
 		train_idx.extend(list(indx[:500]))
 		test_idx.extend(list(indx[500:600]))
-	#print(combined_train_idx, len(train_idx))
-	#for id in train_idx:
+	# print(combined_train_idx, len(train_idx))
+	# for id in train_idx:
 	#	print(combined_cifar.targets[id])
-	#print(combined_cifar.targets)
+	# print(combined_cifar.targets)
 	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
-	#print(train_data)
+	# print(train_data)
+	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
+	test_loader = torch.utils.data.DataLoader(
+		torch.utils.data.dataset.Subset(combined_cifar, test_idx), batch_size=256)
+	if get_val:
+		dataset_size = len(train_loader.dataset)
+		indices = list(range(dataset_size))
+		split = int(np.floor(0.1 * dataset_size))
+		np.random.shuffle(indices)
+		train_indices, val_indices = indices[split:], indices[:split]
+		train_dataset = torch.utils.data.Subset(train_data, train_indices)
+		val_dataset = torch.utils.data.Subset(train_data, val_indices)
+		train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
+		val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=256)
+	else:
+		val_loader = None
+	return train_loader, test_loader, val_loader
+
+def get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shift=1, angle=0, get_val=False):
+	"""
+	Returns a single task of Split-CIFAR100 dataset
+	:param task_id: Current task id
+	:param classes: Number of classes per task
+	:param batch_size: Batch size
+	:param cifar_train: CIFAR100 training data
+	:param cifar_test: CIFAR100 test data
+	:param get_val: Get validation set for grid search
+	:return: Train, test and validation data loaders
+	"""
+	print('doing 500')
+	start_class = 0
+	end_class = 10
+	print(start_class, end_class)
+	combined_targets = torch.tensor(combined_cifar.targets)
+	idx = [np.where(combined_targets == u)[0] for u in range(start_class, end_class)]
+
+	train_idx = []
+	test_idx= []
+	for cls in range(end_class-start_class):
+		indx = np.roll(idx[cls],(shift-1)*100)
+		# print(combined_targets[indx[0]])
+		# print(indx[0][slot*50:(slot+1)*50], slot)
+		if task_id == 0:
+			train_idx.extend(list(indx[0:250]))
+		else:
+			train_idx.extend(list(indx[250:500]))
+
+		test_idx.extend(list(indx[500:600]))
+	# print(combined_train_idx, len(train_idx))
+	# for id in train_idx:
+	#	print(combined_cifar.targets[id])
+	# print(combined_cifar.targets)
+	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
+	
+	if task_id==1:
+		train_data = custom_rotate(train_data, angle)
+	# print(train_data)
 	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 	test_loader = torch.utils.data.DataLoader(
 		torch.utils.data.dataset.Subset(combined_cifar, test_idx), batch_size=256)
@@ -682,13 +782,13 @@ def get_split_cifar100_5000(task_id, classes, batch_size, combined_cifar, shift,
 	return train_loader, test_loader, val_loader
 
 
-def get_split_cifar100_tasks(num_tasks, batch_size, slot, shift, run_500=1, get_val=False):
+def get_split_cifar100_tasks(num_tasks, batch_size, shift, angle, get_val=False):
 	"""
-    Returns data loaders for all tasks of Split-CIFAR100
-    :param num_tasks: Total number of tasks
-    :param batch_size: Batch-size for training data
-    :param get_val: Get validation set for grid search
-    """
+	Returns data loaders for all tasks of Split-CIFAR100
+	:param num_tasks: Total number of tasks
+	:param batch_size: Batch-size for training data
+	:param get_val: Get validation set for grid search
+	"""
 	datasets = {}
 
 	# convention: tasks starts from 1 not 0 !
@@ -701,10 +801,7 @@ def get_split_cifar100_tasks(num_tasks, batch_size, slot, shift, run_500=1, get_
 	classes = int(100 / num_tasks)
 
 	for task_id in range(1, num_tasks + 1):
-		if run_500 == 1:
-			train_loader, test_loader, val_loader = get_split_cifar100_(task_id, classes, batch_size, combined_cifar, slot, shift, get_val=get_val)
-		else:
-			train_loader, test_loader, val_loader = get_split_cifar100_5000(task_id, classes, batch_size, combined_cifar, shift, get_val=get_val)
+		train_loader, test_loader, val_loader = get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shift, angle, get_val=get_val)
 
 		datasets[task_id] = {'train': train_loader, 'test': test_loader, 'val': val_loader}
 	return datasets
