@@ -28,10 +28,9 @@ def train_single_epoch(args, net, optimizer, loader, criterion, task_id=None, ta
 
 		#JD's change to do label shuffle exp	
 		if task_id>0:
-			print(Y)
 			idx = torch.randperm(Y.shape[0])
 			Y = Y[idx].view(Y.size())
-			print(Y)
+			
 		Y = Y.to(DEVICE)
 		if task_id is not None:
 			pred = net(X, task_id+1)
