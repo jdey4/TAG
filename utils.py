@@ -114,7 +114,7 @@ def get_benchmark_model(args):
 	elif 'cifar' in args.dataset:
 		if args.tasks==10 or args.tasks==2:
 			#return AlexNet(config={'input_size': (3, 32, 32), 'total_classes': 100, 'classes': int(100 / args.tasks)}).to(DEVICE)
-			return gido(config={'input_size': (3, 32, 32), 'total_classes': 100, 'classes': int(100 / args.tasks)}).to(DEVICE)
+			return gido(config={'input_size': (3, 32, 32), 'total_classes': 20, 'classes': int(20 / args.tasks)}).to(DEVICE)
 		return ResNet18(config={'input_size': (3, 32, 32), 'dropout': args.dropout, 'classes': int(100 / args.tasks)}).to(DEVICE)
 	elif 'mini_imagenet' in args.dataset:
 		return ResNet18(config={'input_size': (3, 84, 84), 'dropout': args.dropout, 'classes': int(100 / args.tasks)}).to(DEVICE)
