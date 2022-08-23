@@ -78,7 +78,7 @@ class custom_rotate(Dataset):
 	def __init__(self, data, angle):
 		self.dataset = data
 		self.angle = angle
-		print('hi')
+		print(len(self.dataset))
 	
 	def __getitem__(self, idx):
 		image = image_aug(self.dataset[idx][0], self.angle)

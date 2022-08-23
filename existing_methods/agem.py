@@ -125,7 +125,6 @@ class AGEM(nn.Module):
 			mem_preds = net(mem_x, None)
 			mem_preds = apply_mask(mem_y, mem_preds, self.nc_per_task)
 			# print(self.memory_data[prev_tasks].shape, self.memory_labs[prev_tasks], mem_y, torch.argmax(mem_preds,dim=1))
-			#print(mem_preds)
 			ptloss = self.ce(mem_preds, mem_y)
 			ptloss.backward()
 			store_grad(net.parameters, self.grads, self.grad_dims, 1)
