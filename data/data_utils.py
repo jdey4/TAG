@@ -82,7 +82,7 @@ class custom_rotate(Dataset):
 	
 	def __getitem__(self, idx):
 		image = image_aug(self.dataset[idx][0], self.angle)
-		target = self.dataset[idx][1]
+		target = self.dataset[idx][1] + 10
 		return (image, target)
 
 	def __len__(self):
@@ -762,7 +762,7 @@ def get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shif
 	#	print(combined_cifar.targets[id])
 	# print(combined_cifar.targets)
 	train_data = torch.utils.data.dataset.Subset(combined_cifar, train_idx)
-	
+	print(train_data[0])
 	if task_id==2:
 		train_data = custom_rotate(train_data, angle)
 	#print(len(train_data))
@@ -800,7 +800,7 @@ def get_split_cifar100_tasks(num_tasks, batch_size, shift, angle, get_val=False)
 	cifar_train = torchvision.datasets.CIFAR100('./data/', train=True, download=True, transform=cifar_transforms)
 	cifar_test = torchvision.datasets.CIFAR100('./data/', train=False, download=True, transform=cifar_transforms)
 	combined_cifar = custom_concat(cifar_train, cifar_test)
-	classes = int(100 / num_tasks)
+	classes = 10#int(100 / num_tasks)
 
 	for task_id in range(1, num_tasks + 1):
 		train_loader, test_loader, val_loader = get_split_cifar100_rotate(task_id, classes, batch_size, combined_cifar, shift, angle, get_val=get_val)
