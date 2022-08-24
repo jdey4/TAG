@@ -20,7 +20,8 @@ from torch.utils.data import Dataset
 
 from sklearn.model_selection import train_test_split
 import pickle
-
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 class custom_concat(Dataset):
     r"""
