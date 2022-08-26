@@ -46,9 +46,6 @@ def parse_arguments():
 	parser.add_argument('--mem-size', default=1, type=int, help='mem')
 	parser.add_argument('--multi', default=0, type=int, help='MTL')
 	parser.add_argument('--lambd', default=1, type=int, help='EWC')
-	parser.add_argument('--slot', default=0, type=int, help='slot')
-	parser.add_argument('--shift', default=1, type=int, help='shift')
-	parser.add_argument('--run_500', default=1, type=int, help='run 500 samples?')
 	parser.add_argument('--single_task', default=0, type=int, help='single task')
 
 	args = parser.parse_args()
@@ -122,7 +119,8 @@ def get_benchmark_model(args):
 	elif 'cub' in args.dataset:
 		return ResNet18_CUB(config={'input_size': (3, 224, 224), 'dropout': args.dropout, 'classes': int(200 / args.tasks)}).to(DEVICE)
 	elif '5data' in args.dataset:
-		return ResNet18(config={'input_size': (3, 32, 32), 'dropout': args.dropout, 'classes': int(50 / args.tasks)}).to(DEVICE)
+		#return ResNet18(config={'input_size': (3, 32, 32), 'dropout': args.dropout, 'classes': int(50 / args.tasks)}).to(DEVICE)
+		return gido(config={'input_size': (3, 32, 32), 'total_classes': 50, 'classes': int(50 / args.tasks)}).to(DEVICE)
 	else:
 		raise Exception("Unknown dataset.\n" + "The code supports 'perm-mnist, rot-mnist, and cifar-100.")
 
@@ -172,8 +170,8 @@ def hyp_tag(args, avg_runs_exp):
 	"""
 	Grid search for TAG: Learning rate and b
 	"""
-	bs = (5,1,7, 3)
-	lrs = (0.005, 0.001, 0.0005, 0.0001, 0.00005, 0.00001)
+	bs = (1,7)
+	lrs = (0.00005, 0.00001)
 	best_hyp, best_acc = 0, 0
 	for b in bs:
 		args.b = b

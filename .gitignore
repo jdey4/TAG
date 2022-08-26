@@ -1,2 +1,6 @@
 __pycache__
 data/cifar*
+data/CUB*
+data/Fas*
+data/MNIST
+data/SVHN
