@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 import pandas as pd
 # %%
-with open('/Users/jayantadey/TAG/results/agem_single_task_6_9.pickle','rb') as f:
+with open('/Users/jayantadey/TAG/converted_file/tag-1-1.pickle','rb') as f:
     res = pickle.load(f)
 # %%
 total_tasks = 10
@@ -36,12 +36,12 @@ for fold in range(data_fold):
         for ii in range(10):
             tasks_single.append(ii+1)
             shifts_single.append(fold)
-            accuracy_single.append(res_single[ii])
+            accuracy_single.append(res_single[ii]/100)
             for jj in range(ii+1):
                 tasks.append(jj+1)
                 base_tasks.append(ii+1)
                 shifts.append(fold)
-                accuracies_across_tasks.append(res_multi[jj+1][ii])
+                accuracies_across_tasks.append(res_multi[jj+1][ii]/100)
 
         df['data_fold'] = shifts
         df['task'] = tasks
@@ -54,7 +54,7 @@ for fold in range(data_fold):
         df_single_task['accuracy'] = accuracy_single
 
         summary = (df,df_single_task)
-        file_to_save = 'converted_file/'+algo+'_'+str(slot+1)+'_'+str(fold+1)+'.pickle'
+        file_to_save = 'converted_file/'+algo+'-'+str(slot+1)+'-'+str(fold+1)+'.pickle'
         with open(file_to_save, 'wb') as f:
             pickle.dump(summary, f)
 # %% load 5000 sample files
@@ -83,12 +83,12 @@ for fold in range(data_fold):
     for ii in range(10):
         tasks_single.append(ii+1)
         shifts_single.append(fold)
-        accuracy_single.append(res_single[ii])
+        accuracy_single.append(res_single[ii]/100)
         for jj in range(ii+1):
             tasks.append(jj+1)
             base_tasks.append(ii+1)
             shifts.append(fold)
-            accuracies_across_tasks.append(res_multi[jj+1][ii])
+            accuracies_across_tasks.append(res_multi[jj+1][ii]/100)
 
     df['data_fold'] = shifts
     df['task'] = tasks
@@ -101,7 +101,7 @@ for fold in range(data_fold):
     df_single_task['accuracy'] = accuracy_single
 
     summary = (df,df_single_task)
-    file_to_save = 'converted_file/'+algo+'_'+str(fold+1)+'.pickle'
+    file_to_save = 'converted_file/'+algo+'-'+str(fold+1)+'.pickle'
     with open(file_to_save, 'wb') as f:
         pickle.dump(summary, f)
 
