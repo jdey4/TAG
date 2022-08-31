@@ -47,14 +47,3 @@ def get_data_loaders(args, grid_search=False):
 	print("loaded all tasks!")
 	return train_loaders, test_loaders, val_loaders
 
-
-def get_proglearn_data_loader(args, grid_search):
-	"""
-	Get data loaders for the given dataset for proglearn experiments
-	"""
-	print("Loading {} tasks for {}".format(args.tasks, args.dataset))
-	if args.dataset in ['cifar100','cifar10']:
-		tasks = get_split_cifar100_tasks(args.tasks, args.batch_size, grid_search)
-		train_loaders, test_loaders = [tasks[i]['train'] for i in tasks], [tasks[i]['test'] for i in tasks]
-		val_loaders = [tasks[i]['val'] for i in tasks]
-		args.classes = 100
