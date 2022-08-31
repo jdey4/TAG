@@ -35,7 +35,7 @@ for fold in range(data_fold):
         df['task_1_accuracy'] = accuracies_across_tasks
 
         summary = df
-        file_to_save = 'converted_file/'+algo+'_'+str(slot+1)+'_'+str(fold+1)+'.pickle'
+        file_to_save = 'converted_file/'+algo+'-'+str(slot+1)+'-'+str(fold+1)+'.pickle'
         with open(file_to_save, 'wb') as f:
             pickle.dump(summary, f)
 # %% load 5000 sample files
