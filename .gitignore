@@ -1,1 +1,6 @@
 __pycache__
+data/cifar*
+data/CUB*
+data/Fashion*
+data/MNIST
+data/SVHN
