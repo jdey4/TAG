@@ -39,7 +39,7 @@ def train_single_epoch(args, net, optimizer, loader, criterion, task_id=None, ta
 				torch.nn.utils.clip_grad_norm_(net.parameters(), 100)
 			elif 'agem' in args.opt:
 				net = ALGO.observe_agem(net, X, task_id, Y)
-			elif 'er' in args.opt:
+			elif 'er' in args.opt and single_task==False:
 				if task_id > 0:
 					mem_x, mem_y, b_task_ids = ALGO.sample(args.batch_size, exclude_task=None)
 					mem_pred = net(mem_x, None)
@@ -242,7 +242,7 @@ def continuum_run_single_task(args, train_loaders, test_loaders):
 	acc = []
 
 	for current_task_id in continuum:
-
+		print(current_task_id)
 		ALGO = None
 
 		acc_db, loss_db = init_experiment(args)
