@@ -8,7 +8,7 @@ with open('/Users/jayantadey/TAG/results/five_dataset/agem.pickle', 'rb') as f:
 
 # %%
 total_tasks = 20
-algo = 'tag'
+algo = 'agem'
 # %%
 df = pd.DataFrame()
 df_single_task = pd.DataFrame()
@@ -30,7 +30,7 @@ with open(singletask_file, 'rb') as f:
     res_single = pickle.load(f)
 
 
-for ii in range(5):
+for ii in range(20):
     tasks_single.append(ii+1)
     accuracy_single.append(res_single[ii]/100)
     for jj in range(ii+1):
