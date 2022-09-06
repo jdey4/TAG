@@ -7,8 +7,8 @@ with open('/Users/jayantadey/TAG/results/five_dataset/agem.pickle', 'rb') as f:
     res = pickle.load(f)
 
 # %%
-total_tasks = 5
-algo = 'agem'
+total_tasks = 20
+algo = 'tag'
 # %%
 df = pd.DataFrame()
 df_single_task = pd.DataFrame()
@@ -20,8 +20,8 @@ shifts_single = []
 tasks_single = []
 accuracy_single = []
 
-multitask_file = 'results/five_dataset/'+algo+'.pickle'
-singletask_file = 'results/five_dataset/'+algo+'_'+'single_task.pickle'
+multitask_file = 'results/mini_imagenet/'+algo+'.pickle'
+singletask_file = 'results/mini_imagenet/'+algo+'_'+'single_task.pickle'
 
 with open(multitask_file, 'rb') as f:
     res_multi = pickle.load(f)
@@ -47,7 +47,7 @@ df_single_task['task'] = tasks_single
 df_single_task['accuracy'] = accuracy_single
 
 summary = (df,df_single_task)
-file_to_save = 'converted_files/five_dataset/'+algo+'.pickle'
+file_to_save = 'converted_files/mini_imagenet/'+algo+'.pickle'
 with open(file_to_save, 'wb') as f:
     pickle.dump(summary, f)
 # %%
